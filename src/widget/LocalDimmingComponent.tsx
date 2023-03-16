@@ -1,14 +1,31 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 
-import Alert from "@mui/material/Alert";
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import { ThemeProvider } from '@mui/material/styles';
 
-import CircularProgress from "@mui/material/CircularProgress";
+import Landing from './Landing';
+import { requestAPI, webdsService } from './local_exports';
 
-import { ThemeProvider } from "@mui/material/styles";
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-import Landing from "./Landing";
-
-import { webdsService } from "./local_exports";
+export const postRequest = async (request: string, args?: any[]) => {
+  const dataToSend: any = {
+    request
+  };
+  if (args) {
+    dataToSend['arguments'] = args;
+  }
+  try {
+    const response = await requestAPI<any>('tutor/LocalDimming', {
+      body: JSON.stringify(dataToSend),
+      method: 'POST'
+    });
+    return response;
+  } catch (error) {
+    return Promise.reject(error);
+  }
+};
 
 export const LocalDimmingComponent = (props: any): JSX.Element => {
   const [initialized, setInitialized] = useState<boolean>(false);
@@ -16,6 +33,14 @@ export const LocalDimmingComponent = (props: any): JSX.Element => {
 
   useEffect(() => {
     const initialize = async () => {
+      try {
+        await postRequest('powerOn');
+        await sleep(3000);
+      } catch (error) {
+        console.error(error);
+        setAlert('Failed to power on.');
+        return;
+      }
       setInitialized(true);
     };
     initialize();
@@ -30,7 +55,7 @@ export const LocalDimmingComponent = (props: any): JSX.Element => {
           <Alert
             severity="error"
             onClose={() => setAlert(undefined)}
-            sx={{ whiteSpace: "pre-wrap" }}
+            sx={{ whiteSpace: 'pre-wrap' }}
           >
             {alert}
           </Alert>
@@ -40,10 +65,10 @@ export const LocalDimmingComponent = (props: any): JSX.Element => {
       {!initialized && (
         <div
           style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)"
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)'
           }}
         >
           <CircularProgress color="primary" />

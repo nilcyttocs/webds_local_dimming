@@ -2,24 +2,24 @@ import {
   ILayoutRestorer,
   JupyterFrontEnd,
   JupyterFrontEndPlugin
-} from "@jupyterlab/application";
+} from '@jupyterlab/application';
 
-import { WidgetTracker } from "@jupyterlab/apputils";
+import { WidgetTracker } from '@jupyterlab/apputils';
 
-import { ILauncher } from "@jupyterlab/launcher";
+import { ILauncher } from '@jupyterlab/launcher';
 
-import { WebDSService, WebDSWidget } from "@webds/service";
+import { WebDSService, WebDSWidget } from '@webds/service';
 
-import { localDimmingIcon } from "./icons";
+import { localDimmingIcon } from './icons';
 
-import LocalDimmingWidget from "./widget/LocalDimmingWidget";
+import LocalDimmingWidget from './widget/LocalDimmingWidget';
 
 namespace Attributes {
-  export const command = "webds_local_dimming:open";
-  export const id = "webds_local_dimming_widget";
-  export const label = "Local Dimming";
-  export const caption = "Local Dimming";
-  export const category = "Device - Assessment";
+  export const command = 'webds_local_dimming:open';
+  export const id = 'webds_local_dimming_widget';
+  export const label = 'Local Dimming';
+  export const caption = 'Local Dimming';
+  export const category = 'Device - Assessment';
   export const rank = 80;
 }
 
@@ -29,7 +29,7 @@ export let webdsService: WebDSService;
  * Initialization data for the @webds/local_dimming extension.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
-  id: "@webds/local_dimming:plugin",
+  id: '@webds/local_dimming:plugin',
   autoStart: true,
   requires: [ILauncher, ILayoutRestorer, WebDSService],
   activate: (
@@ -38,7 +38,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     restorer: ILayoutRestorer,
     service: WebDSService
   ) => {
-    console.log("JupyterLab extension @webds/local_dimming is activated!");
+    console.log('JupyterLab extension @webds/local_dimming is activated!');
 
     webdsService = service;
 
@@ -49,7 +49,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       label: Attributes.label,
       caption: Attributes.caption,
       icon: (args: { [x: string]: any }) => {
-        return args["isLauncher"] ? localDimmingIcon : undefined;
+        return args['isLauncher'] ? localDimmingIcon : undefined;
       },
       execute: () => {
         if (!widget || widget.isDisposed) {
@@ -63,7 +63,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         if (!tracker.has(widget)) tracker.add(widget);
 
-        if (!widget.isAttached) shell.add(widget, "main");
+        if (!widget.isAttached) shell.add(widget, 'main');
 
         shell.activateById(widget.id);
       }
