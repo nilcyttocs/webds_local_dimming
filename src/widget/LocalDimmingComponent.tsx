@@ -7,7 +7,20 @@ import { ThemeProvider } from '@mui/material/styles';
 import Landing from './Landing';
 import { requestAPI, webdsService } from './local_exports';
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const removeWatermark = () => {
+  const ids: string[] = [];
+  const iframes = document.body.querySelectorAll('iframe');
+  iframes.forEach(iframe => {
+    if (iframe.id.startsWith('sb__open-sandbox')) ids.push(iframe.id);
+  });
+  for (const id of ids) {
+    const node = document.createElement('div');
+    node.style.setProperty('display', 'none', 'important');
+    node.id = id;
+    document.getElementById(id)?.remove();
+    document.body.appendChild(node);
+  }
+};
 
 export const postRequest = async (request: string, args?: any[]) => {
   const dataToSend: any = {
@@ -31,22 +44,15 @@ export const LocalDimmingComponent = (props: any): JSX.Element => {
   const [initialized, setInitialized] = useState<boolean>(false);
   const [alert, setAlert] = useState<string | undefined>(undefined);
 
+  const webdsTheme = webdsService.ui.getWebDSTheme();
+
   useEffect(() => {
     const initialize = async () => {
-      try {
-        await postRequest('powerOn');
-        await sleep(3000);
-      } catch (error) {
-        console.error(error);
-        setAlert('Failed to power on.');
-        return;
-      }
       setInitialized(true);
     };
+    removeWatermark();
     initialize();
   }, []);
-
-  const webdsTheme = webdsService.ui.getWebDSTheme();
 
   return (
     <ThemeProvider theme={webdsTheme}>
