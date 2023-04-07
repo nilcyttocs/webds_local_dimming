@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
 import Slider from '@mui/material/Slider';
 import { useTheme } from '@mui/material/styles';
 import Switch from '@mui/material/Switch';
@@ -79,7 +81,7 @@ const brightnessMarks = [
 export const Landing = (props: any): JSX.Element => {
   const [poweredOn, setPoweredOn] = useState<boolean>(false);
   const [initialized, setInitialized] = useState<boolean>(false);
-  const [localDimming, setLocalDimming] = useState<boolean>(false);
+  const [localDimming, setLocalDimming] = useState<string>('off');
   const [darkScene, setDarkScene] = useState<boolean>(false);
   const [outsideLight, setOutsideLight] = useState<number>(0);
   const [outsideLightCommitted, setOutsideLightCommitted] = useState<number>(0);
@@ -124,20 +126,35 @@ export const Landing = (props: any): JSX.Element => {
     }
   };
 
-  const handleLocalDimming = async (setting: boolean) => {
+  const handleLocalDimming = async (value: string) => {
     try {
+      let setting: boolean | number;
+      switch (value) {
+        case 'off':
+          setting = false;
+          break;
+        case 'on':
+          setting = true;
+          break;
+        case 'half':
+          setting = 2;
+          break;
+        default:
+          setting = false;
+          break;
+      }
       await postRequest('EnableLocalDimming', [setting]);
-      setLocalDimming(setting);
+      setLocalDimming(value);
     } catch (error) {
       console.error(error);
       props.setAlert('Failed to set local dimming.');
     }
   };
 
-  const handleDarkScene = async (setting: boolean) => {
+  const handleDarkScene = async (value: boolean) => {
     try {
-      await postRequest('EnableDarkSceneEnhancement', [setting]);
-      setDarkScene(setting);
+      await postRequest('EnableDarkSceneEnhancement', [value]);
+      setDarkScene(value);
     } catch (error) {
       console.error(error);
       props.setAlert('Failed to set dark scene enhancement.');
@@ -220,16 +237,20 @@ export const Landing = (props: any): JSX.Element => {
         {poweredOn &&
           (initialized ? (
             <>
-              <FormControlLabel
-                control={<Checkbox />}
-                label="Local Dimming"
+              <Typography>Local Dimming</Typography>
+              <RadioGroup
+                row
                 value={localDimming}
-                checked={localDimming}
-                onClick={() => {
-                  handleLocalDimming(!localDimming);
-                }}
-                sx={{ width: '0px', padding: '0px' }}
-              />
+                onChange={event => handleLocalDimming(event.target.value)}
+              >
+                <FormControlLabel control={<Radio />} label="Off" value="off" />
+                <FormControlLabel control={<Radio />} label="On" value="on" />
+                <FormControlLabel
+                  control={<Radio />}
+                  label="Half & Half"
+                  value="half"
+                />
+              </RadioGroup>
               <FormControlLabel
                 control={<Checkbox />}
                 label="Dark Scene Enhancement"
