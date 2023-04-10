@@ -87,13 +87,26 @@ export const Landing = (props: any): JSX.Element => {
   const [outsideLightCommitted, setOutsideLightCommitted] = useState<number>(0);
   const [brightness, setBrightness] = useState<number>(5);
   const [brightnessCommitted, setBrightnessCommitted] = useState<number>(5);
+  const [showBacklight, setShowBacklight] = useState<boolean>(false);
 
   const theme = useTheme();
 
-  const powerOn = async () => {
+  const powerOn = async (
+    shift: boolean,
+    ctrl: boolean,
+    alt: boolean,
+    meta: boolean
+  ) => {
     setPoweredOn(true);
     try {
-      await postRequest('powerOn');
+      if (shift || ctrl || alt || meta) {
+        await postRequest('powerOn', [shift, ctrl, alt, meta]);
+        const userData: Number = await postRequest('GetUserData');
+        setShowBacklight(userData === 1);
+      } else {
+        await postRequest('powerOn');
+        setShowBacklight(false);
+      }
       await sleep(3000);
     } catch (error) {
       console.error(error);
@@ -114,9 +127,18 @@ export const Landing = (props: any): JSX.Element => {
     setInitialized(true);
   };
 
-  const powerOff = async () => {
+  const powerOff = async (
+    shift: boolean,
+    ctrl: boolean,
+    alt: boolean,
+    meta: boolean
+  ) => {
     try {
-      await postRequest('powerOff');
+      if (shift || ctrl || alt || meta) {
+        await postRequest('powerOff', [shift, ctrl, alt, meta]);
+      } else {
+        await postRequest('powerOff');
+      }
       setPoweredOn(false);
       setInitialized(false);
     } catch (error) {
@@ -138,6 +160,9 @@ export const Landing = (props: any): JSX.Element => {
           break;
         case 'half':
           setting = 2;
+          break;
+        case 'backlight':
+          setting = 4;
           break;
         default:
           setting = false;
@@ -204,10 +229,10 @@ export const Landing = (props: any): JSX.Element => {
   };
 
   useEffect(() => {
-    powerOn();
+    powerOn(false, false, false, false);
     return () => {
       if (poweredOn) {
-        powerOff();
+        powerOff(false, false, false, false);
       }
     };
   }, []);
@@ -219,10 +244,21 @@ export const Landing = (props: any): JSX.Element => {
         <Switch
           checked={poweredOn}
           onChange={event => {
+            const mouseEvent: MouseEvent = window.event as MouseEvent;
             if (event.target.checked) {
-              powerOn();
+              powerOn(
+                mouseEvent.shiftKey,
+                mouseEvent.ctrlKey,
+                mouseEvent.altKey,
+                mouseEvent.metaKey
+              );
             } else {
-              powerOff();
+              powerOff(
+                mouseEvent.shiftKey,
+                mouseEvent.ctrlKey,
+                mouseEvent.altKey,
+                mouseEvent.metaKey
+              );
             }
           }}
         />
@@ -250,6 +286,13 @@ export const Landing = (props: any): JSX.Element => {
                   label="Half & Half"
                   value="half"
                 />
+                {showBacklight && (
+                  <FormControlLabel
+                    control={<Radio />}
+                    label="Show Backlight"
+                    value="backlight"
+                  />
+                )}
               </RadioGroup>
               <FormControlLabel
                 control={<Checkbox />}
@@ -336,6 +379,19 @@ export const Landing = (props: any): JSX.Element => {
               <CircularProgress color="primary" />
             </div>
           ))}
+        <Typography
+          variant="h1"
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%) rotate(-25deg)',
+            opacity: '0.2',
+            zIndex: '99'
+          }}
+        >
+          For Nichia Only
+        </Typography>
       </Content>
     </Canvas>
   );
