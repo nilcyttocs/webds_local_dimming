@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
 
+import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
+import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import Slider from '@mui/material/Slider';
 import { useTheme } from '@mui/material/styles';
 import Switch from '@mui/material/Switch';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 
 import { postRequest } from './LocalDimmingComponent';
@@ -24,6 +28,17 @@ const outsideLightMarks = [
   {
     value: 1,
     label: 'Bright'
+  }
+];
+
+const darkSceneStrengthMarks = [
+  {
+    value: 0,
+    label: 'Weak'
+  },
+  {
+    value: 128,
+    label: 'Strong'
   }
 ];
 
@@ -78,35 +93,74 @@ const brightnessMarks = [
   }
 ];
 
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div hidden={value !== index} {...other}>
+      {value === index && <Box sx={{ p: 2, paddingTop: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
 export const Landing = (props: any): JSX.Element => {
+  const [tab, setTab] = useState<number>(0);
   const [poweredOn, setPoweredOn] = useState<boolean>(false);
   const [initialized, setInitialized] = useState<boolean>(false);
   const [localDimming, setLocalDimming] = useState<string>('off');
-  const [darkScene, setDarkScene] = useState<boolean>(false);
   const [outsideLight, setOutsideLight] = useState<number>(0);
   const [outsideLightCommitted, setOutsideLightCommitted] = useState<number>(0);
+  const [darkScene, setDarkScene] = useState<boolean>(false);
+  const [darkSceneStrength, setDarkSceneStrength] = useState<number>(0);
+  const [darkSceneStrengthCommitted, setDarkSceneStrengthCommitted] = useState<
+    number
+  >(0);
   const [brightness, setBrightness] = useState<number>(5);
   const [brightnessCommitted, setBrightnessCommitted] = useState<number>(5);
-  const [showBacklight, setShowBacklight] = useState<boolean>(false);
+  const [defectMode, setDefectMode] = useState<number>(0);
 
   const theme = useTheme();
 
-  const powerOn = async (
-    shift: boolean,
-    ctrl: boolean,
-    alt: boolean,
-    meta: boolean
-  ) => {
+  const initializeMain = async () => {
+    try {
+      await postRequest('EnableLocalDimming', [false]);
+      setLocalDimming('off');
+      await postRequest('EnableDarkSceneEnhancement', [false]);
+      setDarkScene(false);
+      await postRequest('SetOutsideLightLevel', [0]);
+      setOutsideLight(0);
+      setOutsideLightCommitted(0);
+      await postRequest('SetDarkSceneEnhancementStrength', [0]);
+      setDarkSceneStrength(0);
+      setDarkSceneStrengthCommitted(0);
+      await postRequest('SetBrightness', [500]);
+      setBrightness(5);
+      setBrightnessCommitted(5);
+    } catch (error) {
+      console.error(error);
+      return Promise.reject('Failed to initialize Main tab.');
+    }
+  };
+
+  const initializeLEDDefect = async () => {
+    try {
+      //await postRequest('SetLedDefectDemoMode', [0]);
+      setDefectMode(0);
+    } catch (error) {
+      console.error(error);
+      return Promise.reject('Failed to initialize LED Defect tab.');
+    }
+  };
+
+  const powerOn = async () => {
     setPoweredOn(true);
     try {
-      if (shift || ctrl || alt || meta) {
-        await postRequest('powerOn', [shift, ctrl, alt, meta]);
-        const userData: Number = await postRequest('GetUserData');
-        setShowBacklight(userData === 1);
-      } else {
-        await postRequest('powerOn');
-        setShowBacklight(false);
-      }
+      await postRequest('powerOn');
       await sleep(3000);
     } catch (error) {
       console.error(error);
@@ -115,30 +169,18 @@ export const Landing = (props: any): JSX.Element => {
       return;
     }
     try {
-      await postRequest('EnableLocalDimming', [false]);
-      await postRequest('EnableDarkSceneEnhancement', [false]);
-      await postRequest('SetOutsideLightLevel', [0]);
-      await postRequest('SetBrightness', [500]);
+      await initializeMain();
     } catch (error) {
-      console.error(error);
-      props.setAlert('Failed to initialize.');
+      props.setAlert(error);
       return;
     }
+    setTab(0);
     setInitialized(true);
   };
 
-  const powerOff = async (
-    shift: boolean,
-    ctrl: boolean,
-    alt: boolean,
-    meta: boolean
-  ) => {
+  const powerOff = async () => {
     try {
-      if (shift || ctrl || alt || meta) {
-        await postRequest('powerOff', [shift, ctrl, alt, meta]);
-      } else {
-        await postRequest('powerOff');
-      }
+      await postRequest('powerOff');
       setPoweredOn(false);
       setInitialized(false);
     } catch (error) {
@@ -161,9 +203,6 @@ export const Landing = (props: any): JSX.Element => {
         case 'half':
           setting = 2;
           break;
-        case 'backlight':
-          setting = 4;
-          break;
         default:
           setting = false;
           break;
@@ -183,6 +222,26 @@ export const Landing = (props: any): JSX.Element => {
     } catch (error) {
       console.error(error);
       props.setAlert('Failed to set dark scene enhancement.');
+      return;
+    }
+    try {
+      const darkSceneStrength: number = await postRequest(
+        'GetDarkSceneEnhancementStrength'
+      );
+      setDarkSceneStrength(darkSceneStrength);
+      setDarkSceneStrengthCommitted(darkSceneStrength);
+    } catch (error) {
+      console.error(error);
+      props.setAlert('Failed to set dark scene enhancement strength.');
+      return;
+    }
+    try {
+      const brightness: number = await postRequest('GetBrightnessIndex');
+      setBrightness(brightness);
+      setBrightnessCommitted(brightness);
+    } catch (error) {
+      console.error(error);
+      props.setAlert('Failed to set brightness.');
     }
   };
 
@@ -203,6 +262,49 @@ export const Landing = (props: any): JSX.Element => {
     } catch (error) {
       console.error(error);
       props.setAlert('Failed to set outside light level.');
+      return;
+    }
+    try {
+      const darkSceneStrength: number = await postRequest(
+        'GetDarkSceneEnhancementStrength'
+      );
+      setDarkSceneStrength(darkSceneStrength);
+      setDarkSceneStrengthCommitted(darkSceneStrength);
+    } catch (error) {
+      console.error(error);
+      props.setAlert('Failed to set dark scene enhancement strength.');
+      return;
+    }
+    try {
+      const brightness: number = await postRequest('GetBrightnessIndex');
+      setBrightness(brightness);
+      setBrightnessCommitted(brightness);
+    } catch (error) {
+      console.error(error);
+      props.setAlert('Failed to set brightness.');
+    }
+  };
+
+  const handleDarkSceneStrengthChange = (event: any, value: any) => {
+    if (value === darkSceneStrength) {
+      return;
+    }
+    setDarkSceneStrength(value);
+  };
+
+  const handleDarkSceneStrengthChangeCommitted = async (
+    event: any,
+    value: any
+  ) => {
+    if (value === darkSceneStrengthCommitted) {
+      return;
+    }
+    try {
+      await postRequest('SetDarkSceneEnhancementStrength', [value]);
+      setDarkSceneStrengthCommitted(value);
+    } catch (error) {
+      console.error(error);
+      props.setAlert('Failed to set dark scene enhancement strength.');
     }
   };
 
@@ -228,11 +330,201 @@ export const Landing = (props: any): JSX.Element => {
     }
   };
 
+  const handleDefectModeChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const mode = Number((event.target as HTMLInputElement).value);
+    try {
+      //await postRequest('SetLedDefectDemoMode', [mode]);
+      setDefectMode(mode);
+    } catch (error) {
+      console.error(error);
+      props.setAlert('Failed to set LED defect mode.');
+    }
+  };
+
+  const handleTabChange = async (
+    event: React.SyntheticEvent,
+    newTab: number
+  ) => {
+    switch (newTab) {
+      case 0:
+        try {
+          await initializeMain();
+        } catch (error) {
+          props.setAlert(error);
+          return;
+        }
+        break;
+      case 1:
+        try {
+          await initializeLEDDefect();
+        } catch (error) {
+          props.setAlert(error);
+          return;
+        }
+        break;
+      default:
+        break;
+    }
+    setTab(newTab);
+  };
+
+  const showMain = (): JSX.Element => {
+    return (
+      <>
+        <Typography>Local Dimming</Typography>
+        <RadioGroup
+          row
+          value={localDimming}
+          onChange={event => handleLocalDimming(event.target.value)}
+        >
+          <FormControlLabel control={<Radio />} label="Off" value="off" />
+          <FormControlLabel control={<Radio />} label="On" value="on" />
+          <FormControlLabel
+            control={<Radio />}
+            label="Half & Half"
+            value="half"
+          />
+        </RadioGroup>
+        <FormControlLabel
+          control={<Checkbox />}
+          label="Dark Scene Enhancement"
+          value={darkScene}
+          checked={darkScene}
+          onClick={() => {
+            handleDarkScene(!darkScene);
+          }}
+          sx={{ width: '0px', padding: '0px', marginTop: '16px' }}
+        />
+        <div style={{ marginTop: '24px' }}>
+          <Typography>Outside Light Level</Typography>
+          <Slider
+            valueLabelDisplay="off"
+            step={null}
+            min={0}
+            max={1}
+            value={outsideLight}
+            marks={outsideLightMarks}
+            onChange={handleOutsideLightChange}
+            onChangeCommitted={handleOutsideLightChangeCommitted}
+            sx={{
+              width: '80px',
+              marginTop: '4px',
+              marginLeft: '16px',
+              '& .MuiSlider-track': {
+                height: '2px !important'
+              },
+              '& .MuiSlider-markLabel': {
+                color: theme.palette.text.primary
+              },
+              '& .MuiSlider-mark': {
+                backgroundColor: '#bfbfbf',
+                height: '16px',
+                '& .MuiSlider-markActive': {
+                  backgroundColor: 'currentColor'
+                }
+              }
+            }}
+          />
+        </div>
+        <div style={{ marginTop: '32px' }}>
+          <Typography>Dark Scene Enhancement Strength</Typography>
+          <Slider
+            valueLabelDisplay="off"
+            step={2}
+            min={0}
+            max={128}
+            value={darkSceneStrength}
+            marks={darkSceneStrengthMarks}
+            onChange={handleDarkSceneStrengthChange}
+            onChangeCommitted={handleDarkSceneStrengthChangeCommitted}
+            sx={{
+              width: '240px',
+              marginTop: '4px',
+              marginLeft: '16px',
+              '& .MuiSlider-track': {
+                height: '2px !important'
+              },
+              '& .MuiSlider-markLabel': {
+                color: theme.palette.text.primary
+              },
+              '& .MuiSlider-mark': {
+                backgroundColor: '#bfbfbf',
+                height: '16px',
+                '& .MuiSlider-markActive': {
+                  backgroundColor: 'currentColor'
+                }
+              }
+            }}
+          />
+        </div>
+        <div style={{ marginTop: '32px' }}>
+          <Typography>Brightness (nit)</Typography>
+          <Slider
+            valueLabelDisplay="off"
+            step={null}
+            min={0}
+            max={11}
+            value={brightness}
+            marks={brightnessMarks}
+            onChange={handleBrightnessChange}
+            onChangeCommitted={handleBrightnessChangeCommitted}
+            sx={{
+              width: '640px',
+              marginTop: '4px',
+              marginLeft: '16px',
+              '& .MuiSlider-track': {
+                height: '2px !important'
+              },
+              '& .MuiSlider-markLabel': {
+                color: theme.palette.text.primary
+              },
+              '& .MuiSlider-mark': {
+                backgroundColor: '#bfbfbf',
+                height: '16px',
+                '& .MuiSlider-markActive': {
+                  backgroundColor: 'currentColor'
+                }
+              }
+            }}
+          />
+        </div>
+      </>
+    );
+  };
+
+  const showLEDDefect = (): JSX.Element => {
+    return (
+      <>
+        <FormControl>
+          <RadioGroup value={defectMode} onChange={handleDefectModeChange}>
+            <FormControlLabel
+              value={0}
+              control={<Radio />}
+              label="Normal Display"
+            />
+            <FormControlLabel
+              value={1}
+              control={<Radio />}
+              label="Black Out Several LEDs"
+            />
+            <FormControlLabel
+              value={2}
+              control={<Radio />}
+              label="Compensate Blacked Out LEDs"
+            />
+          </RadioGroup>
+        </FormControl>
+      </>
+    );
+  };
+
   useEffect(() => {
-    powerOn(false, false, false, false);
+    powerOn();
     return () => {
       if (poweredOn) {
-        powerOff(false, false, false, false);
+        powerOff();
       }
     };
   }, []);
@@ -244,21 +536,10 @@ export const Landing = (props: any): JSX.Element => {
         <Switch
           checked={poweredOn}
           onChange={event => {
-            const mouseEvent: MouseEvent = window.event as MouseEvent;
             if (event.target.checked) {
-              powerOn(
-                mouseEvent.shiftKey,
-                mouseEvent.ctrlKey,
-                mouseEvent.altKey,
-                mouseEvent.metaKey
-              );
+              powerOn();
             } else {
-              powerOff(
-                mouseEvent.shiftKey,
-                mouseEvent.ctrlKey,
-                mouseEvent.altKey,
-                mouseEvent.metaKey
-              );
+              powerOff();
             }
           }}
         />
@@ -266,6 +547,7 @@ export const Landing = (props: any): JSX.Element => {
     >
       <Content
         sx={{
+          height: '640px',
           display: 'flex',
           flexDirection: 'column'
         }}
@@ -273,99 +555,18 @@ export const Landing = (props: any): JSX.Element => {
         {poweredOn &&
           (initialized ? (
             <>
-              <Typography>Local Dimming</Typography>
-              <RadioGroup
-                row
-                value={localDimming}
-                onChange={event => handleLocalDimming(event.target.value)}
-              >
-                <FormControlLabel control={<Radio />} label="Off" value="off" />
-                <FormControlLabel control={<Radio />} label="On" value="on" />
-                <FormControlLabel
-                  control={<Radio />}
-                  label="Half & Half"
-                  value="half"
-                />
-                {showBacklight && (
-                  <FormControlLabel
-                    control={<Radio />}
-                    label="Show Backlight"
-                    value="backlight"
-                  />
-                )}
-              </RadioGroup>
-              <FormControlLabel
-                control={<Checkbox />}
-                label="Dark Scene Enhancement"
-                value={darkScene}
-                checked={darkScene}
-                onClick={() => {
-                  handleDarkScene(!darkScene);
-                }}
-                sx={{ width: '0px', padding: '0px', marginTop: '16px' }}
-              />
-              <div style={{ marginTop: '32px' }}>
-                <Typography>Outside Light Level</Typography>
-                <Slider
-                  valueLabelDisplay="off"
-                  step={null}
-                  min={0}
-                  max={1}
-                  value={outsideLight}
-                  marks={outsideLightMarks}
-                  onChange={handleOutsideLightChange}
-                  onChangeCommitted={handleOutsideLightChangeCommitted}
-                  sx={{
-                    width: '80px',
-                    marginTop: '4px',
-                    marginLeft: '16px',
-                    '& .MuiSlider-track': {
-                      height: '2px !important'
-                    },
-                    '& .MuiSlider-markLabel': {
-                      color: theme.palette.text.primary
-                    },
-                    '& .MuiSlider-mark': {
-                      backgroundColor: '#bfbfbf',
-                      height: '16px',
-                      '& .MuiSlider-markActive': {
-                        backgroundColor: 'currentColor'
-                      }
-                    }
-                  }}
-                />
-              </div>
-              <div style={{ marginTop: '32px' }}>
-                <Typography>Brightness (nit)</Typography>
-                <Slider
-                  valueLabelDisplay="off"
-                  step={null}
-                  min={0}
-                  max={11}
-                  value={brightness}
-                  marks={brightnessMarks}
-                  onChange={handleBrightnessChange}
-                  onChangeCommitted={handleBrightnessChangeCommitted}
-                  sx={{
-                    width: '640px',
-                    marginTop: '4px',
-                    marginLeft: '16px',
-                    '& .MuiSlider-track': {
-                      height: '2px !important'
-                    },
-                    '& .MuiSlider-markLabel': {
-                      color: theme.palette.text.primary
-                    },
-                    '& .MuiSlider-mark': {
-                      backgroundColor: '#bfbfbf',
-                      height: '16px',
-                      '& .MuiSlider-markActive': {
-                        backgroundColor: 'currentColor'
-                      }
-                    }
-                  }}
-                />
-              </div>
+              <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                <Tabs value={tab} onChange={handleTabChange}>
+                  <Tab label="Main" />
+                  <Tab label="LED Defect" />
+                </Tabs>
+              </Box>
+              <TabPanel value={tab} index={0}>
+                {showMain()}
+              </TabPanel>
+              <TabPanel value={tab} index={1}>
+                {showLEDDefect()}
+              </TabPanel>
             </>
           ) : (
             <div
@@ -379,19 +580,6 @@ export const Landing = (props: any): JSX.Element => {
               <CircularProgress color="primary" />
             </div>
           ))}
-        <Typography
-          variant="h1"
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%) rotate(-25deg)',
-            opacity: '0.2',
-            zIndex: '99'
-          }}
-        >
-          For Nichia Only
-        </Typography>
       </Content>
     </Canvas>
   );
