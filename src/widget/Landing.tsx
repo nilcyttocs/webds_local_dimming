@@ -149,7 +149,7 @@ export const Landing = (props: any): JSX.Element => {
 
   const initializeLEDDefect = async () => {
     try {
-      //await postRequest('SetLedDefectDemoMode', [0]);
+      await postRequest('SetLedDefectDemoMode', [0]);
       setDefectMode(0);
     } catch (error) {
       console.error(error);
@@ -335,7 +335,7 @@ export const Landing = (props: any): JSX.Element => {
   ) => {
     const mode = Number((event.target as HTMLInputElement).value);
     try {
-      //await postRequest('SetLedDefectDemoMode', [mode]);
+      await postRequest('SetLedDefectDemoMode', [mode]);
       setDefectMode(mode);
     } catch (error) {
       console.error(error);
